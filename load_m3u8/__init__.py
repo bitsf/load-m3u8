@@ -3,6 +3,7 @@
 import traceback
 
 import requests
+from urllib.parse import urljoin
 
 user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/64.0.3282.140 Safari/537.36'
 headers = {'User-Agent': user_agent}
@@ -25,15 +26,15 @@ def load_ts(data):
             if encryptKey is None:
                 fp.write(res.content)
             else:
-                aesKey = requests.get(encryptKey.uri).content
-                fp.write(decrypt(res.content, aesKey, encryptKey.iv))
+                aesKey = encryptKey
+                fp.write(decrypt(res.content, aesKey))
     except Exception as e:
         print(traceback.format_exc())
         return f'{ts_name} exception: {str(e)}'
     return f'{ts_name} succeed'
 
 
-def decrypt(content, key, iv):
+def decrypt(content, key):
     '''
     M3U8 has the same AES-IV and key
     :param content: Encrypted content
@@ -48,3 +49,9 @@ def decrypt(content, key, iv):
     except Exception as e:
         print('Decryption failed: ', traceback.format_exc())
         return content
+
+def load_key(encryptKey, base_uri):
+    if encryptKey is None:
+        return None
+    aesKey = requests.get(urljoin(base_uri, encryptKey.uri)).content
+    return aesKey

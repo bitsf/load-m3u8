@@ -9,7 +9,7 @@ from urllib.parse import urljoin
 import m3u8
 from natsort import natsorted
 
-from load_m3u8 import load_ts
+from load_m3u8 import load_ts, load_key
 
 windows_invalid = ['*', '|', ':', '?', '/', '<', '>', '"', '\\']
 '''Unresolvable characters in the Windows System'''
@@ -70,6 +70,7 @@ class Load_M3U8(object):
             base_uri = m3u8_obj.base_uri
         segments = m3u8_obj.segments
         encryptKey = m3u8_obj.keys[0] if len(m3u8_obj.keys) > 0 else None
+        encryptKey = load_key(encryptKey, base_uri)
         for seg in segments:
             yield [urljoin(base_uri, seg.uri), encryptKey]
 
