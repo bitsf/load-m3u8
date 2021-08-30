@@ -19,6 +19,7 @@ def load_ts_done(feature):
 def load_ts(data):
     url, encryptKey, ts_name = data
     try:
+        print("download", url)
         res = requests.get(url, headers=headers)
         if res is None or res.content is None:
             return 'exception end'
@@ -53,5 +54,6 @@ def decrypt(content, key):
 def load_key(encryptKey, base_uri):
     if encryptKey is None:
         return None
+    print("download", urljoin(base_uri, encryptKey.uri))
     aesKey = requests.get(urljoin(base_uri, encryptKey.uri)).content
     return aesKey
