@@ -38,8 +38,8 @@ def main(**kwargs):
 
     workers_group = parser.add_argument_group('Workers options')
     workers_group = workers_group.add_mutually_exclusive_group()
-    workers_group.add_argument('-pw', '--process_workers', type=int, nargs=1, help='number of process used')
-    workers_group.add_argument('-tw', '--thread_workers', type=int, nargs=1, help='number of threads used')
+    workers_group.add_argument('-pw', '--process_workers', type=int, help='number of process used')
+    workers_group.add_argument('-tw', '--thread_workers', type=int, help='number of threads used')
 
     args = parser.parse_args()
 

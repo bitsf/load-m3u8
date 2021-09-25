@@ -29,6 +29,10 @@ class Load_M3U8(object):
 
     def __init__(self, m3u8_url, video_path='/tmp/m3u8.ts', process_workers=None, thread_workers=None):
         use_process = thread_workers is None
+        if use_process:
+            print('use process', process_workers)
+        else:
+            print('use thread', thread_workers)
         self.pool = ProcessPoolExecutor(max_workers=process_workers) if use_process else ThreadPoolExecutor(
             max_workers=thread_workers)
         self.m3u8_url = m3u8_url
@@ -51,9 +55,17 @@ class Load_M3U8(object):
     def __load_m3u8(self):
         urls = self.__resolve_url()
         for index, url in enumerate(urls):
-            feature = self.pool.submit(load_ts, [url[0], url[1], f'{self.ts_folder}/{index}.ts'])
-            # feature.add_done_callback(load_ts_done)
+            future = self.pool.submit(load_ts, [index, url[0], url[1], f'{self.ts_folder}/{index}.ts'])
+            future.add_done_callback(load_ts_done)
         self.pool.shutdown()
+        retry_ts = failed_ts
+        failed_ts = []
+        for data in retry_ts:
+            load_ts(data)
+        if failed_ts:
+            print('failed url')
+            for data in failed_ts:
+                print(index, data[1])
 
     def __resolve_url(self):
         m3u8_obj = m3u8.load(self.m3u8_url)
