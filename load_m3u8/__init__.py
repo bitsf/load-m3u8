@@ -12,12 +12,14 @@ headers = {'User-Agent': user_agent}
 failed_ts = []
 
 
-def load_ts_done(feature):
-    if feature.exception() is not None:
-        print('load_ts_exception: ', feature.exception())
+def load_ts_done(future):
+    if future.exception() is not None:
+        print('load_ts_exception: ', future.exception())
     else:
-        msg, result, index, exp = feature.result()
-        if not result:
+        result = future.result()
+        print('result', result)
+        msg, ok, index, exp = result
+        if not ok:
             print('load_ts failed: ', msg)
 
 
@@ -25,13 +27,13 @@ def load_ts_done(feature):
 def load_ts(data):
     index, url, encryptKey, ts_name = data
     try:
-        print("fetch", url, ts_name)
+        print(f'download {url} to {ts_name}')
         if os.path.exists(ts_name):
             print("exists", ts_name)
-            return
+            return True
         res = requests.get(url, headers=headers, timeout=(30,300))
         if res is None or res.content is None:
-            return 'exception end'
+            return False, data
         with open(ts_name+".tmp", 'wb') as fp:
             if encryptKey is None:
                 fp.write(res.content)
@@ -40,10 +42,9 @@ def load_ts(data):
                 fp.write(decrypt(res.content, aesKey))
         os.rename(ts_name+".tmp", ts_name)
     except Exception as e:
-        print(traceback.format_exc())
-        failed_ts.append(data)
-        return f'{ts_name} exception: {str(e)}', False, index, e
-    return f'{ts_name} succeed', True, index, None
+        print(f'{index} {url} exception: {str(e)}')
+        return False, data
+    return True, None
 
 
 def decrypt(content, key):

@@ -1,6 +1,6 @@
 # _*_coding:utf-8_*_
 
-import os
+import os,shutil
 from concurrent.futures.process import ProcessPoolExecutor
 from concurrent.futures.thread import ThreadPoolExecutor
 from glob import iglob
@@ -9,7 +9,7 @@ from urllib.parse import urljoin
 import m3u8
 from natsort import natsorted
 
-from load_m3u8 import load_ts, load_key
+from load_m3u8 import load_ts, load_key, load_ts_done, failed_ts
 
 windows_invalid = ['*', '|', ':', '?', '/', '<', '>', '"', '\\']
 '''Unresolvable characters in the Windows System'''
@@ -30,9 +30,9 @@ class Load_M3U8(object):
     def __init__(self, m3u8_url, video_path='/tmp/m3u8.ts', process_workers=None, thread_workers=None):
         use_process = thread_workers is None
         if use_process:
-            print('use process', process_workers)
+            print(f'use {process_workers} process')
         else:
-            print('use thread', thread_workers)
+            print(f'use {thread_workers} thread')
         self.pool = ProcessPoolExecutor(max_workers=process_workers) if use_process else ThreadPoolExecutor(
             max_workers=thread_workers)
         self.m3u8_url = m3u8_url
@@ -52,19 +52,33 @@ class Load_M3U8(object):
         if not os.path.exists(self.ts_folder):
             os.mkdir(self.ts_folder)
 
+        self.failed_ts = []
+
+    def __load_ts_done(self, future):
+        if future.exception() is not None:
+            print('load_ts_exception: ', future.exception())
+        else:
+            ok, data = future.result()
+            if not ok:
+                self.failed_ts.append(data)
+
     def __load_m3u8(self):
         urls = self.__resolve_url()
         for index, url in enumerate(urls):
             future = self.pool.submit(load_ts, [index, url[0], url[1], f'{self.ts_folder}/{index}.ts'])
-            future.add_done_callback(load_ts_done)
+            # future.add_done_callback(load_ts_done)
         self.pool.shutdown()
-        retry_ts = failed_ts
-        failed_ts = []
+        retry_ts = self.failed_ts
+        self.failed_ts = []
+        print("retry", len(retry_ts))
+        print(retry_ts)
         for data in retry_ts:
-            load_ts(data)
-        if failed_ts:
-            print('failed url')
-            for data in failed_ts:
+            ok, _ = load_ts(data)
+            if not ok:
+                self.failed_ts.append(data)
+        if self.failed_ts:
+            print('failed url', len(self.failed_ts))
+            for data in self.failed_ts:
                 print(index, data[1])
 
     def __resolve_url(self):
@@ -81,8 +95,12 @@ class Load_M3U8(object):
             m3u8_obj = m3u8.load(self.m3u8_url)
             base_uri = m3u8_obj.base_uri
         segments = m3u8_obj.segments
+        m3u8_obj.dump(self.ts_folder+"/index.m3u8")
+        print("total", len(segments))
         encryptKey = m3u8_obj.keys[0] if len(m3u8_obj.keys) > 0 else None
         encryptKey = load_key(encryptKey, base_uri)
+        if encryptKey:
+            open(self.ts_folder+"/key.key", "wb").write(encryptKey)
         for seg in segments:
             yield [urljoin(base_uri, seg.uri), encryptKey]
 
@@ -95,4 +113,4 @@ class Load_M3U8(object):
                     fp.write(ft.read())
         for ts in iglob(ts_path):
             os.remove(ts)
-        os.rmdir(self.ts_folder)
+        shutil.rmtree(self.ts_folder)
