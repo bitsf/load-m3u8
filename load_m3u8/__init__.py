@@ -29,7 +29,7 @@ def load_ts(data):
         if os.path.exists(ts_name):
             print("exists", ts_name)
             return
-        res = requests.get(url, headers=headers, timeout=(10,))
+        res = requests.get(url, headers=headers, timeout=(30,300))
         if res is None or res.content is None:
             return 'exception end'
         with open(ts_name+".tmp", 'wb') as fp:
