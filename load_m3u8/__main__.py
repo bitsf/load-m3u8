@@ -61,6 +61,10 @@ def main(**kwargs):
     index = 0
     for m3u8_url in m3u8_urls:
         video_path = os.path.join(abspath, str(index) + '.ts')
+        if os.path.exists(video_path):
+            print('exists', video_path)
+            if input('continue?') != 'y':
+                continue
         index = index + 1
         load_obj = Load_M3U8(m3u8_url, video_path=video_path, process_workers=args.process_workers,
                              thread_workers=args.thread_workers)
